@@ -1,28 +1,28 @@
 FROM php:8.2-apache
 
-# 1. تثبيت الحزم المطلوبة لـ PHP وللتعامل مع PostgreSQL
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    git \
-    && docker-php-ext-install pdo pdo_pgsql zip
+# تثبيت الحزم المطلوبة
+RUN apt-get update && apt-get install -y libzip-dev zip git libpq-dev \
+    && docker-php-ext-install zip pdo pdo_pgsql
 
-# 2. تفعيل mod_rewrite لأجل لارافل
+# تفعيل الـ Rewrite
 RUN a2enmod rewrite
 
-# 3. تغيير مسار الـ Document Root إلى public
+# تغيير المسار لـ public
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# 4. نسخ ملفات المشروع
+# نسخ الملفات
 COPY . /var/www/html
 
-# 5. ضبط الصلاحيات
+# تثبيت Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# تثبيت المكتبات
+RUN composer install --no-dev --optimize-autoloader
+
+# ضبط الصلاحيات
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 6. تثبيت Composer وتثبيت مكتبات لارافل
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-RUN composer install --working-dir=/var/www/html --no-dev --optimize-autoloader
+# *** هذا هو السطر الجديد الذي سينفذ المايجريشن عند كل Build ***
+RUN php /var/www/html/artisan migrate --force
 
 EXPOSE 80
